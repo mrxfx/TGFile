@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Access</title>
+    <style>
+        body {
+            background: #111;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+            height: 100vh;
+        }
+        button {
+            background: #1e88e5;
+            border: none;
+            padding: 15px 25px;
+            color: white;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Verify Your Access</h1>
+    <p>Click below to verify & get access for 24 hours.</p>
+    <button onclick="verify()">✅ Verify Me</button>
+    <script>
+        function verify() {
+            const user_id = new URLSearchParams(window.location.search).get('user_id');
+            window.location.href = '/api/verify?user_id=' + user_id;
+        }
+    </script>
+</body>
+</html>
