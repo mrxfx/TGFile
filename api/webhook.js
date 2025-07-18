@@ -1,28 +1,63 @@
-import { sendMessage, checkVerification, generateLink } from '../settings.js';
+// /api/webhook.js
+import fs from 'fs';
+import path from 'path';
+import { botToken, adminId, logChannel, requiredChannels, siteURL } from '../../settings.js';
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+const readJSON = (filename) => {
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve(filename)));
+  } catch {
+    return [];
+  }
+};
+
+const writeJSON = (filename, data) => {
+  fs.writeFileSync(path.resolve(filename), JSON.stringify(data, null, 2));
+};
+
+const sendMessage = async (chat_id, text, buttons = []) => {
+  const reply_markup = buttons.length
+    ? { inline_keyboard: [buttons.map((btn) => ({ text: btn.text, url: btn.url }))] }
+    : undefined;
+
+  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id, text, parse_mode: "HTML", reply_markup }),
+  });
+};
 
 export default async function handler(req, res) {
-    const body = req.body;
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const rawBody = Buffer.concat(chunks).toString('utf-8');
+  const update = JSON.parse(rawBody);
 
-    if (body.message) {
-        const chatId = body.message.chat.id;
-        const userId = body.message.from.id;
-        const text = body.message.text || '';
+  if (!update.message) return res.status(200).end();
 
-        if (text === '/start') {
-            const verified = await checkVerification(userId);
-            if (!verified) {
-                await sendMessage(chatId, '❌ You are not verified! Please verify at: https://your-domain.vercel.app/verify.html');
-            } else {
-                await sendMessage(chatId, '✅ You are verified! Send /help or upload a file.');
-            }
-        }
+  const { chat, text, from } = update.message;
+  const chat_id = chat.id;
+  const name = from.first_name;
 
-        if (text.startsWith('/help')) {
-            await sendMessage(chatId, 'ℹ️ This is a file sharing bot.
+  if (text === "/start") {
+    const verified = readJSON("verified.json");
 
-Admins can upload files. Users can access files via short links.');
-        }
+    if (!verified.includes(chat_id)) {
+      const url = `${siteURL}/verify.html?uid=${chat_id}`;
+      await sendMessage(chat_id, "🔐 Please verify first!", [
+        { text: "🔓 Verify Me", url }
+      ]);
+      return res.status(200).end();
     }
 
-    res.status(200).json({ ok: true });
+    await sendMessage(chat_id, `👋 Welcome, ${name}!\nYou're now verified!`);
+  }
+
+  res.status(200).end("ok");
 }
